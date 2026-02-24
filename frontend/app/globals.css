@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Roboto+Mono:wght@400;500;700&display=swap");
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-[#131314] text-[#E3E3E3] font-sans;
+    font-family: "DM Sans", "Roboto Mono", monospace;
+  }
+
+  * {
+    @apply transition-colors duration-200;
+  }
+}
+
+@layer utilities {
+  .gradient-gemini {
+    @apply bg-gradient-to-r from-[#4A90E2] via-[#A87FFB] to-[#EA6E74];
+  }
+
+  .surface-elevated {
+    @apply bg-[#26282B];
+  }
+
+  .surface-default {
+    @apply bg-[#1E1F20];
+  }
+
+  .border-soft {
+    @apply border border-[#2F3134];
+  }
+
+  .text-secondary {
+    @apply text-[#C4C7C5];
+  }
+
+  .text-tertiary {
+    @apply text-[#9AA0A6];
+  }
+
+  .text-muted {
+    @apply text-[#5F6368];
+  }
+}
