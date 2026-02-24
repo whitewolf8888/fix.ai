@@ -11,7 +11,8 @@ from app.core.logging import setup_logging, logger
 from app.db.store import BaseStore
 from app.models.task import HealthResponse
 from app.dependencies import get_task_store, get_settings, get_auth_store, get_analytics_store, get_license_store, get_pilot_store, get_settings_store
-from app.api import scan, status as status_api, remediate, webhook, fix, auth, analytics, billing, license, marketing, pilot, settings_api
+from app.api import scan, status as status_api, remediate, webhook, fix, auth, analytics, billing, license, marketing, pilot
+from app.api import settings as settings_api
 from app.middleware import rate_limit_middleware, security_headers_middleware, api_rate_limiter
 from app.services.auth import get_password_hash
 from app.services.license_manager import build_bootstrap_record
