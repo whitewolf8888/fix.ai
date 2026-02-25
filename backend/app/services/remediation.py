@@ -59,7 +59,7 @@ async def generate_enterprise_patch(
             raise RemediationError(f"Cannot read {file_path}: {str(e)}")
     
     # Enforce token budget
-    file_content = _truncate_by_chars(file_content, settings.llm_max_file_chars)
+    file_content = _truncate_by_chars(file_content, settings.LLM_MAX_FILE_CHARS)
     
     # Build prompt
     system_prompt = (

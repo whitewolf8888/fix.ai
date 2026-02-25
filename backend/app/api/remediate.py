@@ -149,7 +149,7 @@ async def remediate_bulk(
     logger.info(f"[Remediate] {len(eligible_findings)} findings eligible")
     
     # Remediate each with semaphore
-    sem = asyncio.Semaphore(settings.llm_concurrency)
+    sem = asyncio.Semaphore(settings.LLM_CONCURRENCY)
     
     async def remediate_with_sem(index: int, finding) -> tuple[int, RemediateResponse]:
         """Remediate with concurrency control."""

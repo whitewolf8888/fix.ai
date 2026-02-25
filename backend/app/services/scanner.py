@@ -30,8 +30,8 @@ async def run_semgrep_scan(
         None,
         _run_semgrep_sync,
         source_dir,
-        settings.semgrep_config,
-        settings.scan_timeout_seconds,
+        settings.SEMGREP_CONFIG,
+        settings.SCAN_TIMEOUT_SECONDS,
     )
     return findings, error
 
@@ -156,7 +156,7 @@ async def clone_repository(
         _clone_sync,
         repo_url,
         branch,
-        settings.clone_depth,
+        settings.CLONE_DEPTH,
     )
     return temp_dir, error
 

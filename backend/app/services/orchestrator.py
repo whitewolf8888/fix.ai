@@ -142,7 +142,7 @@ async def _clone_pr_branch(
         _clone_sync,
         repo_url,
         branch_name,
-        settings.clone_depth,
+        settings.CLONE_DEPTH,
     )
     return temp_dir, error
 
@@ -164,7 +164,7 @@ async def _remediate_findings(
         List of PatchResult objects
     """
     
-    sem = asyncio.Semaphore(settings.llm_concurrency)
+    sem = asyncio.Semaphore(settings.LLM_CONCURRENCY)
     
     tasks = [
         _remediate_one(finding, clone_dir, sem, settings)
