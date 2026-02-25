@@ -53,6 +53,109 @@ async def create_checkout_session(
     return {"checkout_url": session.url}
 
 
+@router.get("/subscription")
+async def get_subscription_details(
+    settings: Settings = Depends(get_settings),
+    _user=Depends(require_roles(["admin"]))
+) -> dict:
+    """Get current subscription details."""
+    if not settings.BILLING_ENABLED:
+        return {
+            "active": False,
+            "plan": "free",
+            "status": "no_billing",
+            "message": "Billing is not enabled"
+        }
+    
+    # TODO: Fetch from database based on user
+    return {
+        "active": False,
+        "plan": "free",
+        "status": "inactive",
+        "trial_days_remaining": 14,
+        "features": {
+            "max_scans": 10,
+            "max_repositories": 3,
+            "remediation_enabled": False,
+            "priority_support": False
+        }
+    }
+
+
+@router.get("/invoices")
+async def get_invoices(
+    settings: Settings = Depends(get_settings),
+    _user=Depends(require_roles(["admin"]))
+) -> dict:
+    """Get billing invoices."""
+    if not settings.BILLING_ENABLED:
+        return {"invoices": []}
+    
+    # TODO: Fetch actual invoices from Stripe
+    return {
+        "invoices": [
+            {
+                "id": "inv_sample1",
+                "date": "2026-02-01",
+                "amount": 49.00,
+                "status": "paid",
+                "invoice_url": "https://stripe.com/invoice/sample"
+            }
+        ]
+    }
+
+
+@router.get("/plans")
+async def get_available_plans(settings: Settings = Depends(get_settings)) -> dict:
+    """Get available subscription plans."""
+    return {
+        "plans": [
+            {
+                "id": "starter",
+                "name": "Starter",
+                "price": 49,
+                "currency": "USD",
+                "interval": "month",
+                "features": [
+                    "Up to 50 scans/month",
+                    "10 repositories",
+                    "Basic remediation",
+                    "Email support"
+                ]
+            },
+            {
+                "id": "growth",
+                "name": "Growth",
+                "price": 149,
+                "currency": "USD",
+                "interval": "month",
+                "features": [
+                    "Unlimited scans",
+                    "Unlimited repositories",
+                    "Advanced remediation",
+                    "Priority support",
+                    "Custom integrations"
+                ],
+                "popular": True
+            },
+            {
+                "id": "enterprise",
+                "name": "Enterprise",
+                "price": 499,
+                "currency": "USD",
+                "interval": "month",
+                "features": [
+                    "Everything in Growth",
+                    "Dedicated support",
+                    "SLA guarantee",
+                    "On-premise deployment",
+                    "Custom training"
+                ]
+            }
+        ]
+    }
+
+
 @router.post("/webhook")
 async def stripe_webhook(request: Request, settings: Settings = Depends(get_settings)) -> dict:
     """Stripe webhook handler."""
