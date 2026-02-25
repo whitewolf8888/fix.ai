@@ -273,6 +273,8 @@ function DiffModal({ finding, isOpen, onClose, apiBase }: DiffModalProps) {
 export default function VulnSentinelDashboard() {
   const [repoUrl, setRepoUrl] = useState("");
   const [branch, setBranch] = useState("main");
+  const [availableBranches, setAvailableBranches] = useState<string[]>([]);
+  const [loadingBranches, setLoadingBranches] = useState(false);
   const [apiBase, setApiBase] = useState(DEFAULT_API_BASE);
   const [apiToken, setApiToken] = useState("");
   const [showApiConfig, setShowApiConfig] = useState(false);
@@ -304,6 +306,40 @@ export default function VulnSentinelDashboard() {
       localStorage.removeItem("vs_token");
     }
   }, [apiToken]);
+
+  // Fetch available branches when repo URL changes
+  useEffect(() => {
+    if (!repoUrl.trim() || !repoUrl.includes("github.com")) {
+      setAvailableBranches([]);
+      return;
+    }
+
+    const fetchBranches = async () => {
+      setLoadingBranches(true);
+      try {
+        const result = await apiFetch(
+          `/api/branches?repo_url=${encodeURIComponent(repoUrl)}`,
+          {},
+          apiBase
+        );
+        if (result.branches && result.branches.length > 0) {
+          setAvailableBranches(result.branches);
+          // Set to default branch if available
+          if (result.default && !branch) {
+            setBranch(result.default);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch branches:", err);
+        setAvailableBranches([]);
+      } finally {
+        setLoadingBranches(false);
+      }
+    };
+
+    const timer = setTimeout(fetchBranches, 500);
+    return () => clearTimeout(timer);
+  }, [repoUrl, apiBase]);
 
   (window as any).currentTaskId = currentTaskId;
 
@@ -370,10 +406,20 @@ export default function VulnSentinelDashboard() {
       setPhase("polling");
       startPolling(response.task_id);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Failed to start scan");
+      const errorMsg = err instanceof Error ? err.message : "Failed to start scan";
+      
+      // Better error messaging for branch issues
+      if (errorMsg.includes("not found in repository") || errorMsg.includes("not found")) {
+        const branchSuggestion = availableBranches.length > 0 
+          ? ` Try: ${availableBranches.slice(0, 3).join(", ")}`
+          : "";
+        setErrorMsg(`❌ Branch "${branch}" not found.${branchSuggestion}`);
+      } else {
+        setErrorMsg(`❌ ${errorMsg}`);
+      }
       setPhase("error");
     }
-  }, [apiBase, branch, repoUrl, startPolling]);
+  }, [apiBase, branch, repoUrl, startPolling, availableBranches]);
 
   // Terminal lines for polling phase
   const terminalLines = [
@@ -473,13 +519,28 @@ export default function VulnSentinelDashboard() {
                 className="w-full px-4 py-3 rounded-2xl bg-[#282A2C] text-[#E3E3E3] border-none focus:ring-1 focus:ring-[#A87FFB] font-mono text-sm"
               />
 
-              <input
-                type="text"
-                placeholder="Branch (default: main)"
-                value={branch}
-                onChange={(e) => setBranch(e.target.value)}
-                className="w-full px-4 py-3 rounded-2xl bg-[#282A2C] text-[#E3E3E3] border-none focus:ring-1 focus:ring-[#A87FFB] font-mono text-sm"
-              />
+              {availableBranches.length > 0 ? (
+                <select
+                  value={branch}
+                  onChange={(e) => setBranch(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl bg-[#282A2C] text-[#E3E3E3] border-none focus:ring-1 focus:ring-[#A87FFB] font-mono text-sm"
+                >
+                  {availableBranches.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  placeholder={loadingBranches ? "Loading branches..." : "Branch (default: main)"}
+                  value={branch}
+                  onChange={(e) => setBranch(e.target.value)}
+                  disabled={loadingBranches}
+                  className="w-full px-4 py-3 rounded-2xl bg-[#282A2C] text-[#E3E3E3] border-none focus:ring-1 focus:ring-[#A87FFB] font-mono text-sm disabled:opacity-50"
+                />
+              )}
 
               {showApiConfig && (
                 <div className="p-4 bg-[#26282B] rounded-2xl space-y-3">

@@ -162,7 +162,7 @@ async def clone_repository(
 
 
 def _clone_sync(repo_url: str, branch: str, depth: int) -> tuple[str, Optional[str]]:
-    """Synchronous git clone."""
+    """Synchronous git clone with fallback to default branch."""
     
     try:
         temp_dir = tempfile.mkdtemp(prefix="vulnsentinel_")
@@ -180,6 +180,24 @@ def _clone_sync(repo_url: str, branch: str, depth: int) -> tuple[str, Optional[s
         
     except Exception as e:
         error_msg = str(e)
+        
+        # If branch not found, try without specifying branch (uses default)
+        if "not found" in error_msg.lower() or "no such file or directory" in error_msg.lower():
+            logger.warning(f"[Scanner] Branch '{branch}' not found. Trying default branch...")
+            try:
+                temp_dir = tempfile.mkdtemp(prefix="vulnsentinel_")
+                git.Repo.clone_from(
+                    repo_url,
+                    temp_dir,
+                    depth=depth,
+                )
+                logger.info(f"[Scanner] Clone successful with default branch: {temp_dir}")
+                return temp_dir, None
+            except Exception as fallback_e:
+                fallback_msg = str(fallback_e)
+                logger.error(f"[Scanner] Clone with default branch also failed: {fallback_msg}")
+                return "", f"Git clone error (both specified and default branch failed): {fallback_msg}"
+        
         logger.error(f"[Scanner] Clone failed: {error_msg}")
         return "", f"Git clone error: {error_msg}"
 
