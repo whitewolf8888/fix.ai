@@ -1,0 +1,216 @@
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vulnsentinel-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # App Configuration
+      - APP_NAME=VulnSentinel
+      - APP_VERSION=4.1.0
+      - DEBUG=false
+      - HOST=0.0.0.0
+      - PORT=8000
+      
+      # Storage
+      - STORE_BACKEND=sqlite
+      - DB_PATH=/data/vulnsentinel.db
+      - DATABASE_URL=${DATABASE_URL}
+      
+      # Scanner
+      - SEMGREP_CONFIG=auto
+      - SCAN_TIMEOUT_SECONDS=300
+      
+      # LLM Configuration (use one of these)
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4-turbo}
+      - LLM_CONCURRENCY=3
+      
+      # GitHub Integration
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET:-local-dev-secret-change-me-in-production}
+      - GITHUB_WEBHOOK_POST_PR_COMMENT=true
+
+      # Auth & Security
+      - AUTH_ENABLED=${AUTH_ENABLED:-false}
+      - AUTH_DB_BACKEND=${AUTH_DB_BACKEND:-sqlite}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      - BOOTSTRAP_ADMIN_EMAIL=${BOOTSTRAP_ADMIN_EMAIL}
+      - BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD}
+
+      # Queue
+      - QUEUE_BACKEND=${QUEUE_BACKEND:-local}
+      - REDIS_URL=${REDIS_URL}
+
+      # Billing
+      - BILLING_ENABLED=${BILLING_ENABLED:-false}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - STRIPE_PRICE_ID=${STRIPE_PRICE_ID}
+      - STRIPE_SUCCESS_URL=${STRIPE_SUCCESS_URL}
+      - STRIPE_CANCEL_URL=${STRIPE_CANCEL_URL}
+
+      # License Verification
+      - LICENSE_BOOTSTRAP_KEY=${LICENSE_BOOTSTRAP_KEY}
+      - LICENSE_BOOTSTRAP_OWNER=${LICENSE_BOOTSTRAP_OWNER}
+      - LICENSE_TRACK_NEW_IPS=${LICENSE_TRACK_NEW_IPS:-true}
+
+      # Pilot Automation
+      - AUTO_PILOT_ENABLED=${AUTO_PILOT_ENABLED:-false}
+      - AUTO_PILOT_MIN_TEAM_SIZE=${AUTO_PILOT_MIN_TEAM_SIZE:-0}
+      - AUTO_PILOT_ALLOWED_DOMAINS=${AUTO_PILOT_ALLOWED_DOMAINS}
+
+      # Pilot Email
+      - PILOT_EMAIL_ENABLED=${PILOT_EMAIL_ENABLED:-false}
+      - PILOT_EMAIL_FROM=${PILOT_EMAIL_FROM}
+      - PILOT_REMINDER_SUBJECT=${PILOT_REMINDER_SUBJECT}
+      - PILOT_REMINDER_DAYS=${PILOT_REMINDER_DAYS:-3,7,14}
+      - PILOT_REMINDER_INTERVAL_HOURS=${PILOT_REMINDER_INTERVAL_HOURS:-24}
+
+      # Alerts
+      - ALERT_EMAIL_ENABLED=${ALERT_EMAIL_ENABLED:-false}
+      - ALERT_EMAIL_RECIPIENTS=${ALERT_EMAIL_RECIPIENTS}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM=${SMTP_FROM}
+      - SMTP_USE_TLS=${SMTP_USE_TLS:-true}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      
+      # Remediation
+      - REMEDIATE_SEVERITIES=ERROR,WARNING,HIGH,MEDIUM
+    volumes:
+      - backend-data:/data
+      - /tmp:/tmp
+    networks:
+      - vulnsentinel-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vulnsentinel-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - PORT=3000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - vulnsentinel-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vulnsentinel-worker
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.scan_worker"]
+    environment:
+      - STORE_BACKEND=${STORE_BACKEND:-sqlite}
+      - DB_PATH=/data/vulnsentinel.db
+      - DATABASE_URL=${DATABASE_URL}
+      - QUEUE_BACKEND=${QUEUE_BACKEND:-redis}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - AUTH_DB_BACKEND=${AUTH_DB_BACKEND:-sqlite}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me}
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    depends_on:
+      - backend
+      - redis
+    volumes:
+      - backend-data:/data
+      - /tmp:/tmp
+    networks:
+      - vulnsentinel-network
+
+  reminder-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vulnsentinel-reminder-worker
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.reminder_worker"]
+    environment:
+      - AUTH_DB_BACKEND=${AUTH_DB_BACKEND:-sqlite}
+      - DB_PATH=/data/vulnsentinel.db
+      - DATABASE_URL=${DATABASE_URL}
+      - PILOT_EMAIL_ENABLED=${PILOT_EMAIL_ENABLED:-false}
+      - PILOT_EMAIL_FROM=${PILOT_EMAIL_FROM}
+      - PILOT_REMINDER_SUBJECT=${PILOT_REMINDER_SUBJECT}
+      - PILOT_REMINDER_DAYS=${PILOT_REMINDER_DAYS:-3,7,14}
+      - PILOT_REMINDER_INTERVAL_HOURS=${PILOT_REMINDER_INTERVAL_HOURS:-24}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM=${SMTP_FROM}
+      - SMTP_USE_TLS=${SMTP_USE_TLS:-true}
+    depends_on:
+      - backend
+    volumes:
+      - backend-data:/data
+    networks:
+      - vulnsentinel-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: vulnsentinel-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=vulnsentinel
+      - POSTGRES_USER=vulnsentinel
+      - POSTGRES_PASSWORD=vulnsentinel
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - vulnsentinel-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: vulnsentinel-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - vulnsentinel-network
+
+networks:
+  vulnsentinel-network:
+    driver: bridge
+
+volumes:
+  backend-data:
+    driver: local
+  postgres-data:
+    driver: local

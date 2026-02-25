@@ -158,6 +158,82 @@ export default function PricingPage() {
             <a href="/onboarding" className="mt-6 inline-block px-4 py-2 rounded-full border border-[#2C3344]">Contact Sales</a>
           </div>
         </div>
+
+        {/* Comparison with Competitors */}
+        <div className="mt-16 pt-12 border-t border-[#262B38]">
+          <div className="mb-8">
+            <h2 className="text-3xl font-semibold">How VulnSentinel Compares</h2>
+            <p className="text-[#9AA0A6] mt-2">Built for teams who want to fix bugs, not just report them.</p>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#262B38]">
+                  <th className="text-left py-4 px-4 text-[#9AA0A6] font-semibold">Feature</th>
+                  <th className="text-left py-4 px-4 text-[#9AA0A6] font-semibold">Snyk / SonarQube</th>
+                  <th className="text-left py-4 px-4 text-[#4A90E2] font-semibold">VulnSentinel</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-[#1F2430]">
+                  <td className="py-4 px-4 font-semibold">Target Audience</td>
+                  <td className="py-4 px-4 text-[#B6BCC8]">Enterprises (Banks, Netflix)</td>
+                  <td className="py-4 px-4 text-[#7FD88C]">Agencies, Freelancers, Startups</td>
+                </tr>
+                <tr className="border-b border-[#1F2430]">
+                  <td className="py-4 px-4 font-semibold">Setup</td>
+                  <td className="py-4 px-4 text-[#B6BCC8]">Complex (DevOps required)</td>
+                  <td className="py-4 px-4 text-[#7FD88C]">1-Click GitHub App</td>
+                </tr>
+                <tr className="border-b border-[#1F2430]">
+                  <td className="py-4 px-4 font-semibold">Main Job</td>
+                  <td className="py-4 px-4 text-[#B6BCC8]">Report Bugs</td>
+                  <td className="py-4 px-4 text-[#7FD88C]">Fix Bugs (Auto-PR)</td>
+                </tr>
+                <tr className="border-b border-[#1F2430]">
+                  <td className="py-4 px-4 font-semibold">Unique Feature</td>
+                  <td className="py-4 px-4 text-[#B6BCC8]">Compliance</td>
+                  <td className="py-4 px-4 text-[#7FD88C]">IP Protection (Code Theft Tracking)</td>
+                </tr>
+                <tr>
+                  <td className="py-4 px-4 font-semibold">Pricing</td>
+                  <td className="py-4 px-4 text-[#B6BCC8]">$1000s/month</td>
+                  <td className="py-4 px-4 text-[#7FD88C]">$29 - $49/month</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-8 p-6 rounded-3xl bg-[#141721] border border-[#262B38]">
+            <div className="grid md:grid-cols-3 gap-6">
+              <div>
+                <div className="text-[#4A90E2] font-semibold mb-2">What's Different</div>
+                <ul className="text-sm text-[#B6BCC8] space-y-2">
+                  <li>✓ Auto-fix with AI</li>
+                  <li>✓ Direct PR generation</li>
+                  <li>✓ Code theft protection</li>
+                </ul>
+              </div>
+              <div>
+                <div className="text-[#4A90E2] font-semibold mb-2">Who We're For</div>
+                <ul className="text-sm text-[#B6BCC8] space-y-2">
+                  <li>✓ Growing startups</li>
+                  <li>✓ Agencies & freelancers</li>
+                  <li>✓ Teams with limited DevOps</li>
+                </ul>
+              </div>
+              <div>
+                <div className="text-[#4A90E2] font-semibold mb-2">No Complex Setup</div>
+                <ul className="text-sm text-[#B6BCC8] space-y-2">
+                  <li>✓ Install GitHub App</li>
+                  <li>✓ Authorize repo access</li>
+                  <li>✓ Scanning begins immediately</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
