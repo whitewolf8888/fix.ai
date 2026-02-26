@@ -41,7 +41,7 @@ def _run_semgrep_sync(
     config: str,
     timeout_seconds: int,
 ) -> tuple[List[Finding], Optional[str]]:
-    """Synchronous Semgrep execution."""
+    """Synchronous Semgrep execution with optimized flags."""
     
     try:
         cmd = [
@@ -50,11 +50,16 @@ def _run_semgrep_sync(
             f"--config={config}",
             "--json",
             "--no-git-ignore",
+            "--no-color",
+            "--quiet",  # Less verbose
+            "--optimize=all",  # Enable optimizations
+            "--jobs=4",  # Parallel processing
             f"--timeout={timeout_seconds}",
+            "--max-memory=2048",  # Prevent OOM
             source_dir,
         ]
         
-        logger.info(f"[Scanner] Running: {' '.join(cmd)}")
+        logger.info(f"[Scanner] Running Semgrep (optimized, parallel)")
         
         result = subprocess.run(
             cmd,
@@ -74,9 +79,14 @@ def _run_semgrep_sync(
             return [], f"Failed to parse Semgrep JSON: {str(e)}"
         
         findings = _parse_semgrep_output(output, source_dir)
-        logger.info(f"[Scanner] Found {len(findings)} vulnerabilities")
         
-        return findings, None
+        # Deduplicate findings (same rule + file + line)
+        unique_findings = _deduplicate_findings(findings)
+        
+        logger.info(f"[Scanner] Found {len(unique_findings)} unique vulnerabilities "
+                   f"(deduplicated from {len(findings)})")
+        
+        return unique_findings, None
         
     except subprocess.TimeoutExpired:
         return [], "Semgrep scan timed out"
@@ -84,6 +94,23 @@ def _run_semgrep_sync(
         return [], "Semgrep not found. Install: pip install semgrep"
     except Exception as e:
         return [], f"Unexpected error: {str(e)}"
+
+
+def _deduplicate_findings(findings: List[Finding]) -> List[Finding]:
+    """Remove duplicate findings (same rule + file + line)."""
+    seen = set()
+    unique = []
+    
+    for finding in findings:
+        key = (finding.rule_id, finding.file_path, finding.line_start)
+        if key not in seen:
+            seen.add(key)
+            unique.append(finding)
+    
+    if len(unique) < len(findings):
+        logger.info(f"[Scanner] Deduplicated {len(findings) - len(unique)} duplicate findings")
+    
+    return unique
 
 
 def _parse_semgrep_output(data: Dict[str, Any], source_dir: str) -> List[Finding]:
@@ -162,17 +189,20 @@ async def clone_repository(
 
 
 def _clone_sync(repo_url: str, branch: str, depth: int) -> tuple[str, Optional[str]]:
-    """Synchronous git clone with fallback to default branch."""
+    """Synchronous git clone with fallback to default branch and optimizations."""
     
     try:
         temp_dir = tempfile.mkdtemp(prefix="vulnsentinel_")
-        logger.info(f"[Scanner] Cloning {repo_url} (branch={branch}) to {temp_dir}")
+        logger.info(f"[Scanner] Cloning {repo_url} (branch={branch}, depth={depth}) to {temp_dir}")
         
+        # Optimizations: shallow clone + single branch = faster
         git.Repo.clone_from(
             repo_url,
             temp_dir,
             branch=branch,
             depth=depth,
+            single_branch=True,  # Only fetch the specified branch
+            no_checkout=False,
         )
         
         logger.info(f"[Scanner] Clone successful: {temp_dir}")
@@ -186,10 +216,13 @@ def _clone_sync(repo_url: str, branch: str, depth: int) -> tuple[str, Optional[s
             logger.warning(f"[Scanner] Branch '{branch}' not found. Trying default branch...")
             try:
                 temp_dir = tempfile.mkdtemp(prefix="vulnsentinel_")
+                # Clone without specifying branch - gets default
                 git.Repo.clone_from(
                     repo_url,
                     temp_dir,
                     depth=depth,
+                    single_branch=True,
+                    no_checkout=False,
                 )
                 logger.info(f"[Scanner] Clone successful with default branch: {temp_dir}")
                 return temp_dir, None

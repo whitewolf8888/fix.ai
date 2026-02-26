@@ -89,16 +89,32 @@ async def post_scan(
     # Generate unique task ID
     task_id = str(uuid.uuid4())
     
-    # Create task record
-    task = TaskRecord.create(task_id, request.repo_url, branch_to_use)
+    # Validate optimization mode
+    valid_modes = ["fast", "balanced", "thorough"]
+    mode = request.optimization_mode.lower() if request.optimization_mode else "balanced"
+    if mode not in valid_modes:
+        mode = "balanced"
+        logger.warning(f"Invalid optimization mode '{request.optimization_mode}', using 'balanced'")
+    
+    # Create task record with optimization mode
+    task = TaskRecord.create(task_id, request.repo_url, branch_to_use, optimization_mode=mode)
     
     # Persist to store
     await task_store.create(task)
     
-    logger.info(f"[Scan] Created task {task_id} for {request.repo_url}@{branch_to_use}")
+    logger.info(f"[Scan] Created task {task_id} for {request.repo_url}@{branch_to_use} (mode={mode})")
     
     # Track event
-    await track_event(analytics_store, "scan_queued", {"task_id": task_id, "repo_url": request.repo_url, "branch": branch_to_use})
+    await track_event(
+        analytics_store, 
+        "scan_queued", 
+        {
+            "task_id": task_id, 
+            "repo_url": request.repo_url, 
+            "branch": branch_to_use,
+            "optimization_mode": mode
+        }
+    )
 
     # Schedule background task or enqueue to Redis
     if settings.QUEUE_BACKEND == "redis" and settings.REDIS_URL:

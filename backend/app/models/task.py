@@ -80,6 +80,7 @@ class TaskRecord:
     task_id: str
     repo_url: str
     branch: str = "main"
+    optimization_mode: str = "balanced"
     status: TaskStatus = TaskStatus.QUEUED
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
@@ -88,9 +89,9 @@ class TaskRecord:
     error_message: Optional[str] = None
     
     @classmethod
-    def create(cls, task_id: str, repo_url: str, branch: str = "main") -> "TaskRecord":
+    def create(cls, task_id: str, repo_url: str, branch: str = "main", optimization_mode: str = "balanced") -> "TaskRecord":
         """Create a new task record."""
-        return cls(task_id=task_id, repo_url=repo_url, branch=branch)
+        return cls(task_id=task_id, repo_url=repo_url, branch=branch, optimization_mode=optimization_mode)
     
     def to_dict(self) -> dict:
         """Convert to dictionary with parsed findings."""
@@ -98,6 +99,7 @@ class TaskRecord:
             "task_id": self.task_id,
             "repo_url": self.repo_url,
             "branch": self.branch,
+            "optimization_mode": self.optimization_mode,
             "status": self.status.value,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
@@ -122,6 +124,10 @@ class ScanRequest(BaseModel):
     repo_url: str = Field(..., description="GitHub repository URL")
     branch: str = Field(default="main", description="Branch to scan")
     auto_remediate: bool = Field(default=True, description="Enable AI auto-remediation")
+    optimization_mode: str = Field(
+        default="balanced",
+        description="Optimization mode: 'fast' (speed), 'balanced' (default), or 'thorough' (accuracy)"
+    )
 
 
 class ScanResponse(BaseModel):
