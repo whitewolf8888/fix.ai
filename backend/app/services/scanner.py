@@ -41,7 +41,7 @@ def _run_semgrep_sync(
     config: str,
     timeout_seconds: int,
 ) -> tuple[List[Finding], Optional[str]]:
-    """Synchronous Semgrep execution with optimized flags."""
+    """Synchronous Semgrep execution with stable, compatible flags."""
     
     try:
         cmd = [
@@ -50,16 +50,11 @@ def _run_semgrep_sync(
             f"--config={config}",
             "--json",
             "--no-git-ignore",
-            "--no-color",
-            "--quiet",  # Less verbose
-            "--optimize=all",  # Enable optimizations
-            "--jobs=4",  # Parallel processing
             f"--timeout={timeout_seconds}",
-            "--max-memory=2048",  # Prevent OOM
             source_dir,
         ]
         
-        logger.info(f"[Scanner] Running Semgrep (optimized, parallel)")
+        logger.info(f"[Scanner] Running Semgrep (compatible mode)")
         
         result = subprocess.run(
             cmd,
